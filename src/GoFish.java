@@ -1,21 +1,23 @@
 import java.util.*;
-
 public class GoFish {
-
     private final String[] SUITS = { "C", "D", "H", "S" };
     private final String[] RANKS = { "A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K" };
 
+    private ArrayList<Card> computerTaken = new ArrayList<>();
+    private ArrayList<Card> computerAintgotit = new ArrayList<>();
     private char whoseTurn;
     private final Player player;
     private final Player computer;
     private List<Card> deck;
     private final Scanner in;
+    private final boolean multiplayer;
 
-    public GoFish() {
+    public GoFish(boolean multi) {
         this.whoseTurn = 'P';
         this.player = new Player();
         this.computer = new Player();
         this.in = new Scanner(System.in);
+        this.multiplayer = multi;
     }
 
     public void play() {
@@ -35,38 +37,25 @@ public class GoFish {
                 whoseTurn = takeTurn(true);
 
                 if (computer.findAndRemoveBooks()) {
-                    System.out.println("CPU: Oh, that's a book!");
+                    if(multiplayer){
+                        System.out.println("PLAYER 2: Oh, that's a book!");
+                    }else{
+                        System.out.println("CPU: Oh, that's a book!");
+                    }
                     showBooks(true);
                 }
             }
 
-            // the games doesn't end until all 13 books are completed, or there are
-            // no more cards left in the deck. the player with the ,ost books at the
-            // end of the game wins.
+            // the games doesn't end until all 13 books are completed. the player with the
+            // most books at the end of the game wins.
 
-            int playerBooks = player.getBooks().size();
-            int computerBooks = computer.getBooks().size();
-
-            String winMessage = "Congratulations, you win! " + playerBooks + " books to " + computerBooks + ".";
-            String loseMessage = "Maybe next time. You lose " + computerBooks + " books to " + playerBooks + ".";
-            String tieMessage = "Looks like it's a tie, " + playerBooks + " to " + computerBooks + ".";
-
-            if (playerBooks + computerBooks == 13) {
+            if (player.getBooks().size() + computer.getBooks().size() == 13) {
                 if (player.getBooks().size() > computer.getBooks().size()) {
-                    System.out.println("\n" + winMessage);
+                    System.out.println("\nCongratulations, PLAYER wins!");
+                } else if (multiplayer && computer.getBooks().size() > player.getBooks().size()){
+                    System.out.println("\nCongratulations, PLAYER 2 wins!");
                 } else {
-                    System.out.println("\n" + loseMessage);
-                }
-                break;
-            } else if (deck.size() == 0) {
-                System.out.println("\nOh no, there are no more cards in the deck!");
-
-                if (playerBooks > computerBooks) {
-                    System.out.println(winMessage);
-                } else if (computerBooks > playerBooks) {
-                    System.out.println(loseMessage);
-                } else {
-                    System.out.println(tieMessage);
+                    System.out.println("\nOh, better luck next time. This game goes to the computer...");
                 }
                 break;
             }
@@ -115,26 +104,44 @@ public class GoFish {
 
         if (!cpu) {
             if (computer.hasCard(card)) {
-                System.out.println("CPU: Yup, here you go!");
+                if(multiplayer){
+                    System.out.println("PLAYER 2: Yup, here you go!");
+                }else{
+                    System.out.println("CPU: Yup, here you go!");
+                    computerTaken.add(card);
+                }
                 computer.relinquishCard(player, card);
 
                 return 'P';
             } else {
-                System.out.println("CPU: Nope, go fish!");
+                if(multiplayer){
+                    System.out.println("PLAYER 2: Nope, go fish!");
+                }else{
+                    System.out.println("CPU: Nope, go fish!");
+                }
+
                 player.takeCard(deck.remove(0));
 
                 return 'C';
             }
         } else {
             if (player.hasCard(card)) {
-                System.out.println("CPU: Oh, you do? Well, hand it over!");
+                if(multiplayer) {
+                    System.out.println("PLAYER: Yup, here you go!");
+                } else{
+                    System.out.println("CPU: Oh, you do? Well, hand it over!");
+                }
                 player.relinquishCard(computer, card);
 
                 return 'C';
             } else {
-                System.out.println("CPU: Ah, I guess I'll go fish...");
+                if(multiplayer) {
+                    System.out.println("PLAYER 2: Ah, I guess I'll go fish...");
+                } else{
+                    System.out.println("CPU: Ah, I guess I'll go fish...");
+                    computerAintgotit.add(card);
+                }
                 computer.takeCard(deck.remove(0));
-
 
                 return 'P';
             }
@@ -147,25 +154,27 @@ public class GoFish {
         // request a card from your opponent, ensuring that the request is valid.
         // if your hand is empty, we return null to signal the calling method to
         // restart the turn. otherwise, we return the requested card.
-
         while (card == null) {
             if (!cpu) {
                 if (player.getHand().size() == 0) {
                     player.takeCard(deck.remove(0));
-
                     return null;
                 } else {
                     System.out.print("PLAYER: Got any... ");
                     String rank = in.nextLine().trim().toUpperCase();
                     card = Card.getCardByRank(rank);
                 }
-            } else {
+            } else if (multiplayer){
+                System.out.print("PLAYER 2: Got any... ");
+                String rank = in.nextLine().trim().toUpperCase();
+                card = Card.getCardByRank(rank);
+            }else {
                 if (computer.getHand().size() == 0) {
                     computer.takeCard(deck.remove(0));
 
                     return null;
                 } else {
-                    card = computer.getCardByNeed();
+                    card = computer.getCardByNeed(computerAintgotit, computerTaken);
                     System.out.println("CPU: Got any... " + card.getRank());
                 }
             }
@@ -177,13 +186,17 @@ public class GoFish {
     private void showHand(boolean cpu) {
         if (!cpu) {
             System.out.println("\nPLAYER hand: " + player.getHand());   // only show player's hand
+        }else if(cpu && multiplayer){
+            System.out.println("\nPLAYER 2 hand: " + computer.getHand());
         }
     }
 
     private void showBooks(boolean cpu) {
         if (!cpu) {
             System.out.println("PLAYER books: " + player.getBooks());   // shows the player's books
-        } else {
+        } else if (multiplayer) {
+            System.out.println("PLAYER 2 books: " + computer.getBooks());
+        }else {
             System.out.println("\nCPU books: " + computer.getBooks());  // shows the computer's books
         }
     }
@@ -205,6 +218,20 @@ public class GoFish {
         System.out.println("#                                                       #");
         System.out.println("#########################################################");
 
-        new GoFish().play();
+        String option;
+        Scanner init = new Scanner(System.in);
+        boolean multi;
+        while(true){
+            System.out.print("Enter \"M\" for a local multiplayer game or \"C\" for a game against CPU: ");
+            option = init.nextLine().toUpperCase();
+            if(option.equals("M")){
+                multi = true;
+                break;
+            } else if (option.equals("C")){
+                multi = false;
+                break;
+            }
+        }
+        new GoFish(multi).play();
     }
 }
